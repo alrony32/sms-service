@@ -29,14 +29,14 @@ func NewSMSService(q queue.Repository) Service {
 
 func (s *SMSService) SendSingle(ctx context.Context, req dto.SingleSMSRequest) (string, error) {
 	items := []dto.BulkSMSItem{{ID: req.ID, To: req.To, Message: req.Message}}
-	return s.enqueueBatch(ctx, req.Client, req.From, req.WebhookURL, items)
+	return s.enqueueBatch(ctx, req.Client, req.From, req.WebhookURL, items, entity.PriorityHigh)
 }
 
 func (s *SMSService) SendBulk(ctx context.Context, req dto.BulkSMSRequest) (string, error) {
-	return s.enqueueBatch(ctx, req.Client, req.From, req.WebhookURL, req.Messages)
+	return s.enqueueBatch(ctx, req.Client, req.From, req.WebhookURL, req.Messages, entity.PriorityNormal)
 }
 
-func (s *SMSService) enqueueBatch(ctx context.Context, client, from, webhookURL string, items []dto.BulkSMSItem) (string, error) {
+func (s *SMSService) enqueueBatch(ctx context.Context, client, from, webhookURL string, items []dto.BulkSMSItem, priority string) (string, error) {
 	batchID := newBatchID()
 	client = queue.NormalizeClient(client)
 	now := time.Now().UTC()
@@ -54,6 +54,7 @@ func (s *SMSService) enqueueBatch(ctx context.Context, client, from, webhookURL 
 			Message:    item.Message,
 			Client:     client,
 			Status:     entity.StatusQueued,
+			Priority:   priority,
 			WebhookURL: webhookURL,
 			CreatedAt:  now,
 			UpdatedAt:  now,

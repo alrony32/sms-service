@@ -9,6 +9,11 @@ const (
 	StatusDelivered = "delivered"
 )
 
+const (
+	PriorityNormal = "normal"
+	PriorityHigh   = "high"
+)
+
 type SMS struct {
 	ID         string    `json:"id"`
 	BatchID    string    `json:"batch_id"`
@@ -17,6 +22,7 @@ type SMS struct {
 	Message    string    `json:"message"`
 	Client     string    `json:"client"`
 	Status     string    `json:"status,omitempty"`
+	Priority   string    `json:"priority,omitempty"`
 	WebhookURL string    `json:"webhook_url"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`

@@ -12,6 +12,7 @@ import (
 
 const (
 	smsQueuePrefix     = "ss-db:"
+	smsHighQueuePrefix = "ss-db-hp:"
 	webhookQueuePrefix = "ss-webhook:"
 	clientsKey         = "ss:clients"
 	batchPrefix        = "ss:batch:"
@@ -55,7 +56,7 @@ func (r *RedisRepository) EnqueueSMS(ctx context.Context, sms entity.SMS) error 
 	}
 
 	pipe := r.client.TxPipeline()
-	pipe.RPush(ctx, smsQueuePrefix+client, payload)
+	pipe.RPush(ctx, smsQueueKey(sms.Priority, client), payload)
 	pipe.SAdd(ctx, clientsKey, client)
 	_, err = pipe.Exec(ctx)
 	return err
@@ -63,9 +64,17 @@ func (r *RedisRepository) EnqueueSMS(ctx context.Context, sms entity.SMS) error 
 
 func (r *RedisRepository) DequeueSMS(ctx context.Context, client string, n int) ([]entity.SMS, error) {
 	client = NormalizeClient(client)
-	raw, err := r.popN(ctx, smsQueuePrefix+client, n)
+
+	raw, err := r.popN(ctx, smsHighQueuePrefix+client, n)
 	if err != nil {
 		return nil, err
+	}
+	if len(raw) < n {
+		normal, err := r.popN(ctx, smsQueuePrefix+client, n-len(raw))
+		if err != nil {
+			return nil, err
+		}
+		raw = append(raw, normal...)
 	}
 
 	out := make([]entity.SMS, 0, len(raw))
@@ -157,9 +166,13 @@ func (r *RedisRepository) QueueSizes(ctx context.Context) (map[string]int64, err
 		return nil, err
 	}
 
-	sizes := make(map[string]int64, len(clients)*2)
+	sizes := make(map[string]int64, len(clients)*3)
 	for _, c := range clients {
 		smsLen, err := r.client.LLen(ctx, smsQueuePrefix+c).Result()
+		if err != nil {
+			return nil, err
+		}
+		highLen, err := r.client.LLen(ctx, smsHighQueuePrefix+c).Result()
 		if err != nil {
 			return nil, err
 		}
@@ -167,6 +180,7 @@ func (r *RedisRepository) QueueSizes(ctx context.Context) (map[string]int64, err
 		if err != nil {
 			return nil, err
 		}
+		sizes[smsHighQueuePrefix+c] = highLen
 		sizes[smsQueuePrefix+c] = smsLen
 		sizes[webhookQueuePrefix+c] = whLen
 	}
@@ -188,6 +202,13 @@ func (r *RedisRepository) popN(ctx context.Context, key string, n int) ([]string
 		return nil, err
 	}
 	return rangeCmd.Val(), nil
+}
+
+func smsQueueKey(priority, client string) string {
+	if priority == entity.PriorityHigh {
+		return smsHighQueuePrefix + client
+	}
+	return smsQueuePrefix + client
 }
 
 func msgKey(client, id string) string {
