@@ -1,0 +1,12 @@
+@host = http://localhost:8080
+
+### send sms
+POST {{host}}/api/v1/sms/send
+Content-Type: application/json
+Accept: application/json
+X-API-KEY: secret123
+
+{
+  "to": "+1234567890",
+  "message": "Hello, this is a test SMS 6!"
+}

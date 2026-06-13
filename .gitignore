@@ -1,0 +1,8 @@
+logs/
+tmp/
+
+# Compiled binary
+sms-service
+
+# Local environment / secrets
+.env
