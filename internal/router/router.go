@@ -17,7 +17,5 @@ func SetupRoutes(r *gin.Engine, deps Dependencies) {
 	{
 		smsGroup.POST("/send", deps.SMSHandler.SendSingle)
 		smsGroup.POST("/bulk", deps.SMSHandler.SendBulk)
-		smsGroup.GET("/batch/:batch_id", deps.SMSHandler.GetBatch)
-		smsGroup.GET("/queues", deps.SMSHandler.Queues)
 	}
 }

@@ -54,28 +54,3 @@ func (h *Handler) SendBulk(c *gin.Context) {
 		"count":    len(req.Messages),
 	})
 }
-
-func (h *Handler) GetBatch(c *gin.Context) {
-	batchID := c.Param("batch_id")
-
-	batch, err := h.service.GetBatch(c.Request.Context(), batchID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if len(batch) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "batch not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, batch)
-}
-
-func (h *Handler) Queues(c *gin.Context) {
-	sizes, err := h.service.QueueSizes(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, sizes)
-}

@@ -30,12 +30,9 @@ type Repository interface {
 
 	CreateBatch(ctx context.Context, batchID, client string, total int) error
 	IncrBatchStatus(ctx context.Context, batchID, status string, delta int64) error
-	GetBatch(ctx context.Context, batchID string) (map[string]string, error)
 
 	SetMessageStatus(ctx context.Context, sms entity.SMS) error
 	UpdateMessageStatus(ctx context.Context, client, id, status string) error
-
-	QueueSizes(ctx context.Context) (map[string]int64, error)
 }
 
 type RedisRepository struct {
@@ -139,10 +136,6 @@ func (r *RedisRepository) IncrBatchStatus(ctx context.Context, batchID, status s
 	return r.client.HIncrBy(ctx, batchPrefix+batchID, status, delta).Err()
 }
 
-func (r *RedisRepository) GetBatch(ctx context.Context, batchID string) (map[string]string, error) {
-	return r.client.HGetAll(ctx, batchPrefix+batchID).Result()
-}
-
 func (r *RedisRepository) SetMessageStatus(ctx context.Context, sms entity.SMS) error {
 	return r.client.HSet(ctx, msgKey(sms.Client, sms.ID), map[string]any{
 		"batch_id":   sms.BatchID,
@@ -158,33 +151,6 @@ func (r *RedisRepository) UpdateMessageStatus(ctx context.Context, client, id, s
 		"status":     status,
 		"updated_at": time.Now().UTC().Format(time.RFC3339),
 	}).Err()
-}
-
-func (r *RedisRepository) QueueSizes(ctx context.Context) (map[string]int64, error) {
-	clients, err := r.client.SMembers(ctx, clientsKey).Result()
-	if err != nil {
-		return nil, err
-	}
-
-	sizes := make(map[string]int64, len(clients)*3)
-	for _, c := range clients {
-		smsLen, err := r.client.LLen(ctx, smsQueuePrefix+c).Result()
-		if err != nil {
-			return nil, err
-		}
-		highLen, err := r.client.LLen(ctx, smsHighQueuePrefix+c).Result()
-		if err != nil {
-			return nil, err
-		}
-		whLen, err := r.client.LLen(ctx, webhookQueuePrefix+c).Result()
-		if err != nil {
-			return nil, err
-		}
-		sizes[smsHighQueuePrefix+c] = highLen
-		sizes[smsQueuePrefix+c] = smsLen
-		sizes[webhookQueuePrefix+c] = whLen
-	}
-	return sizes, nil
 }
 
 func (r *RedisRepository) popN(ctx context.Context, key string, n int) ([]string, error) {

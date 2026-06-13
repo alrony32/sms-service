@@ -15,8 +15,6 @@ import (
 type Service interface {
 	SendSingle(ctx context.Context, req dto.SingleSMSRequest) (batchID string, err error)
 	SendBulk(ctx context.Context, req dto.BulkSMSRequest) (batchID string, err error)
-	GetBatch(ctx context.Context, batchID string) (map[string]string, error)
-	QueueSizes(ctx context.Context) (map[string]int64, error)
 }
 
 type SMSService struct {
@@ -69,14 +67,6 @@ func (s *SMSService) enqueueBatch(ctx context.Context, client, from, webhookURL 
 	}
 
 	return batchID, nil
-}
-
-func (s *SMSService) GetBatch(ctx context.Context, batchID string) (map[string]string, error) {
-	return s.queue.GetBatch(ctx, batchID)
-}
-
-func (s *SMSService) QueueSizes(ctx context.Context) (map[string]int64, error) {
-	return s.queue.QueueSizes(ctx)
 }
 
 func newBatchID() string {
